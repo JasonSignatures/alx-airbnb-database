@@ -1,1 +1,70 @@
-https://viewer.diagrams.net/?tags=%7B%7D&lightbox=1&highlight=0000ff&edit=_blank&layers=1&nav=1&dark=auto#R%3Cmxfile%3E%3Cdiagram%20name%3D%22Page-1%22%20id%3D%225sVRoAf1GT7YnQCF2Wrt%22%3E1Vhdb5swFP01eezERz4f26TtNK1apWpb%2B1S5sQNujS8zTgj79bsEO0ChaZCapXlJ8PG1Meeee7Dp%2BdNofa1IHN4AZaLnOXTd82c9zxuNPPzNgawA%2BgMDBIrTAnJL4I7%2FZQZ0DLrklCW1QA0gNI%2Fr4BykZHNdw4hSkNbDFiDqd41JwBrA3ZyIJvqbUx0W6HjglPhXxoPQ3tl1TE9EbLABkpBQSCuQf9nzpwpAF1fRespEzp3lpRh39UbvdmGKSb3PAJlcZYMfbtqfPcPtfcC%2F0ejmzB2axenMPjGjSIBpgtIhBCCJuCzRCwVLSVk%2BrYOtMuY7QIygi%2BAz0zoz2SRLDQiFOhKmF1essnszftN4yBtfBrY5W1c7Z5lpNR%2FZsJDAUs3Zruc00iEqYHpH3KSIyzmo3MAQes0gYrgeDFBMEM1XdZEQo7VgG1emAy9MRrpkp5h3RcTS3KnnDQWu%2F2IByEA1bcM%2FS7AdZ8mG%2BHMMcCfxekOc7cerIP%2F%2FmTBlJ8O1FfMVXQ1FJCmPBJF56tOQa3YXkw3ZKVZ8PbEJEqxN2vs7M7ZiSrP1To5tb98UUFrWn2uLKqzW3tA5VB4mjUQskb9HHGQopHxl6ZMkYhVmKz0twSwiXOwdHYcg35z7VdKQXV1PTlvuEq3ghU1BgEJQwibJCy7EK4gIHkhsCrbIZ82zx9Ekzw0ccUpbrKGY3fqma%2BRp9IGktuljZyHsLRqrD%2FvWaUpo1KYg92AKGh%2FXZ0trfag560f77GRPn7VEfxKjbdb3hxntBcALl8FpeO22UEzdbOvoeN7reY3cPBWUttvvK2N%2B31MVxMhP1mXMhvpHSnQHo5d054BP6N5Vrx7t79WTrqJz65obNyU3bFGcfzCrdhqC%2B2UIQ3SKpBAu883Tp67c%2Ft6V6x2scv0GkTHJInzG9sptlvW7VUUiVKw%2B0Zoad9j%2FOJ31UJfD8NhFNTrq%2FmfbOPg580QPmgc8ad6aF%2Bxp7ID84582veYLqGWTUnE6SGW3PU%2BnIyqhVLEk6bCh4vNT3eZ0seTuHzL%2B1z4Hm%2BVnxU1f5dusf%2FkP%3C%2Fdiagram%3E%3C%2Fmxfile%3E
+Entities and Attributes
+User
+user_id: Primary Key, UUID, Indexed
+first_name: VARCHAR, NOT NULL
+last_name: VARCHAR, NOT NULL
+email: VARCHAR, UNIQUE, NOT NULL
+password_hash: VARCHAR, NOT NULL
+phone_number: VARCHAR, NULL
+role: ENUM (guest, host, admin), NOT NULL
+created_at: TIMESTAMP, DEFAULT CURRENT_TIMESTAMP
+Property
+property_id: Primary Key, UUID, Indexed
+host_id: Foreign Key, references User(user_id)
+name: VARCHAR, NOT NULL
+description: TEXT, NOT NULL
+location: VARCHAR, NOT NULL
+pricepernight: DECIMAL, NOT NULL
+created_at: TIMESTAMP, DEFAULT CURRENT_TIMESTAMP
+updated_at: TIMESTAMP, ON UPDATE CURRENT_TIMESTAMP
+Booking
+booking_id: Primary Key, UUID, Indexed
+property_id: Foreign Key, references Property(property_id)
+user_id: Foreign Key, references User(user_id)
+start_date: DATE, NOT NULL
+end_date: DATE, NOT NULL
+total_price: DECIMAL, NOT NULL
+status: ENUM (pending, confirmed, canceled), NOT NULL
+created_at: TIMESTAMP, DEFAULT CURRENT_TIMESTAMP
+Payment
+payment_id: Primary Key, UUID, Indexed
+booking_id: Foreign Key, references Booking(booking_id)
+amount: DECIMAL, NOT NULL
+payment_date: TIMESTAMP, DEFAULT CURRENT_TIMESTAMP
+payment_method: ENUM (credit_card, paypal, stripe), NOT NULL
+Review
+review_id: Primary Key, UUID, Indexed
+property_id: Foreign Key, references Property(property_id)
+user_id: Foreign Key, references User(user_id)
+rating: INTEGER, CHECK: rating >= 1 AND rating <= 5, NOT NULL
+comment: TEXT, NOT NULL
+created_at: TIMESTAMP, DEFAULT CURRENT_TIMESTAMP
+Message
+message_id: Primary Key, UUID, Indexed
+sender_id: Foreign Key, references User(user_id)
+recipient_id: Foreign Key, references User(user_id)
+message_body: TEXT, NOT NULL
+sent_at: TIMESTAMP, DEFAULT CURRENT_TIMESTAMP
+Constraints
+User Table
+Unique constraint on email.
+Non-null constraints on required fields.
+Property Table
+Foreign key constraint on host_id.
+Non-null constraints on essential attributes.
+Booking Table
+Foreign key constraints on property_id and user_id.
+status must be one of pending, confirmed, or canceled.
+Payment Table
+Foreign key constraint on booking_id, ensuring payment is linked to valid bookings.
+Review Table
+Constraints on rating values (1-5).
+Foreign key constraints on property_id and user_id.
+Message Table
+Foreign key constraints on sender_id and recipient_id.
+Indexing
+Primary Keys: Indexed automatically.
+Additional Indexes:
+email in the User table.
+property_id in the Property and Booking tables.
+booking_id in the Booking and Payment tables.
