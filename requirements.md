@@ -89,3 +89,5 @@ Booking–Payment: Each booking triggers one payment
 User–Review: A guest can post multiple reviews
 
 Property–Review: Each property can have multiple reviews
+![Entity-Relationship ER](https://github.com/user-attachments/assets/340eda73-cc91-486c-9cd7-146f20099262)
+
