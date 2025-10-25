@@ -1,98 +1,60 @@
--- ==============================================
--- User Table
--- ==============================================
 CREATE TABLE Users (
-    user_id UUID PRIMARY KEY,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    user_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
     phone_number VARCHAR(20),
-    role ENUM('guest', 'host', 'admin') NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'customer' CHECK (role IN ('customer', 'host', 'admin')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX idx_user_email ON Users(email);
-
--- ==============================================
--- Property Table
--- ==============================================
 CREATE TABLE Properties (
-    property_id UUID PRIMARY KEY,
-    host_id UUID NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    description TEXT NOT NULL,
-    location VARCHAR(150) NOT NULL,
-    pricepernight DECIMAL(10,2) NOT NULL,
+    property_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT,
+    location VARCHAR(255) NOT NULL,
+    price_per_night DECIMAL(10,2) NOT NULL CHECK (price_per_night > 0),
+    status VARCHAR(20) DEFAULT 'available' CHECK (status IN ('available', 'booked', 'unavailable')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_property_host FOREIGN KEY (host_id) REFERENCES Users(user_id)
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
-
-CREATE INDEX idx_property_host ON Properties(host_id);
-
--- ==============================================
--- Booking Table
--- ==============================================
 CREATE TABLE Bookings (
-    booking_id UUID PRIMARY KEY,
-    property_id UUID NOT NULL,
-    user_id UUID NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    -- total_price is derived dynamically for 3NF, not stored
-    status ENUM('pending', 'confirmed', 'canceled') NOT NULL,
+    booking_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    property_id INT NOT NULL,
+    user_id INT NOT NULL,
+    check_in DATE NOT NULL,
+    check_out DATE NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount > 0),
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_booking_property FOREIGN KEY (property_id) REFERENCES Properties(property_id),
-    CONSTRAINT fk_booking_user FOREIGN KEY (user_id) REFERENCES Users(user_id)
+    FOREIGN KEY (property_id) REFERENCES Properties(property_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    CONSTRAINT chk_dates CHECK (check_out > check_in)
 );
 
-CREATE INDEX idx_booking_property ON Bookings(property_id);
-CREATE INDEX idx_booking_user ON Bookings(user_id);
-
--- ==============================================
--- Payment Table
--- ==============================================
-CREATE TABLE Payments (
-    payment_id UUID PRIMARY KEY,
-    booking_id UUID NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
-    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    payment_method ENUM('credit_card', 'paypal', 'stripe') NOT NULL,
-    CONSTRAINT fk_payment_booking FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id)
-);
-
-CREATE INDEX idx_payment_booking ON Payments(booking_id);
-
--- ==============================================
--- Review Table
--- ==============================================
+-- Index for faster lookups
+CREATE INDEX idx_bookings_user_id ON Bookings(user_id);
+CREATE INDEX idx_bookings_property_id ON Bookings(property_id);
 CREATE TABLE Reviews (
-    review_id UUID PRIMARY KEY,
-    property_id UUID NOT NULL,
-    user_id UUID NOT NULL,
-    rating INT CHECK (rating >= 1 AND rating <= 5) NOT NULL,
-    comment TEXT NOT NULL,
+    review_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    booking_id INT NOT NULL UNIQUE,
+    rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_review_property FOREIGN KEY (property_id) REFERENCES Properties(property_id),
-    CONSTRAINT fk_review_user FOREIGN KEY (user_id) REFERENCES Users(user_id)
+    FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_review_property ON Reviews(property_id);
-CREATE INDEX idx_review_user ON Reviews(user_id);
-
--- ==============================================
--- Message Table
--- ==============================================
-CREATE TABLE Messages (
-    message_id UUID PRIMARY KEY,
-    sender_id UUID NOT NULL,
-    recipient_id UUID NOT NULL,
-    message_body TEXT NOT NULL,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_message_sender FOREIGN KEY (sender_id) REFERENCES Users(user_id),
-    CONSTRAINT fk_message_recipient FOREIGN KEY (recipient_id) REFERENCES Users(user_id)
+-- Index for quick rating queries
+CREATE INDEX idx_reviews_rating ON Reviews(rating);
+CREATE TABLE Payments (
+    payment_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    booking_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+    payment_method VARCHAR(50) CHECK (payment_method IN ('credit_card', 'bank_transfer', 'wallet')),
+    payment_status VARCHAR(20) DEFAULT 'pending' CHECK (payment_status IN ('pending', 'completed', 'failed')),
+    paid_at TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_message_sender ON Messages(sender_id);
-CREATE INDEX idx_message_recipient ON Messages(recipient_id);
+-- Index for payment status
+CREATE INDEX idx_payments_status ON Payments(payment_status);
