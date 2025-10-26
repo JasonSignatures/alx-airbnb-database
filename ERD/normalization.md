@@ -1,249 +1,123 @@
-🧾 Normalization Review of Schema
-1. USER Table
+1. First Normal Form (1NF)
 
-Proposed structure:
+✅ Passes 1NF
 
-User(
-  user_id INT PRIMARY KEY,
-  first_name VARCHAR(50),
-  last_name VARCHAR(50),
-  email VARCHAR(100),
-  phone VARCHAR(20),
-  address VARCHAR(255),
-  date_joined DATE
-)
+Every field holds atomic values (no repeating groups, no arrays).
 
-✅ Review:
+All tables have primary keys.
 
-Each field is atomic → satisfies 1NF.
+Each attribute represents a single fact about the entity.
 
-No composite keys → 2NF automatically satisfied.
+2. Second Normal Form (2NF)
 
-All attributes depend only on the key (user_id) → no transitive dependency.
-✅ 3NF compliant.
+✅ Passes 2NF
 
-⚠️ Potential Issue:
+Every non-key attribute is fully dependent on the entire primary key.
 
-If you also store city and country within User, and these same values repeat across many users, you may introduce redundancy.
+All tables use single-column primary keys (UUID), so partial dependencies are impossible.
 
-Fix:
-Create a Location table:
+3. Third Normal Form (3NF)
 
-Location(
-  location_id INT PRIMARY KEY,
-  city VARCHAR(100),
-  country VARCHAR(100)
-)
+Let’s inspect transitive dependencies (when non-key columns depend on other non-key columns).
 
--- then
-User(location_id INT FOREIGN KEY REFERENCES Location(location_id))
+Users Table
+(user_id, first_name, last_name, email, password_hash, phone_number, role, created_at)
 
-2. PROPERTY Table
 
-Proposed structure:
+✅ No transitive dependencies.
 
-Property(
-  property_id INT PRIMARY KEY,
-  owner_id INT,
-  property_name VARCHAR(100),
-  description TEXT,
-  location VARCHAR(100),
-  price DECIMAL(10,2),
-  property_type VARCHAR(50)
-)
+All attributes depend only on user_id.
 
-⚠️ Review:
+No derived fields.
 
-All columns atomic → 1NF ✅
+🟢 No redundancy detected.
 
-No composite key → 2NF ✅
+Properties Table
+(property_id, host_id, name, description, location, pricepernight, created_at, updated_at)
 
-Possible violation of 3NF:
-If owner_id refers to a user and you also store owner details here (e.g., owner_name, owner_email), those fields depend on owner_id, not directly on property_id.
 
-Fix:
-Remove those attributes and ensure they live in the User table:
+✅ All attributes depend on property_id.
 
-ALTER TABLE Property
-DROP COLUMN owner_name,
-DROP COLUMN owner_email;
+host_id is a foreign key (not derived).
 
+location stored as a single value — fine for this scale.
+Optional improvement: If the app grows, consider splitting location into structured fields (city, country, etc.) for better filtering and indexing.
 
-✅ After fix, Property depends only on its primary key — 3NF satisfied.
+🟢 No normalization violation.
 
-3. BOOKING Table
+Bookings Table
+(booking_id, property_id, user_id, start_date, end_date, status, created_at)
 
-Proposed structure:
 
-Booking(
-  booking_id INT PRIMARY KEY,
-  user_id INT,
-  property_id INT,
-  booking_date DATE,
-  check_in DATE,
-  check_out DATE,
-  total_price DECIMAL(10,2),
-  status VARCHAR(50)
-)
+✅ Attributes depend on booking_id.
 
-✅ Review:
+⚠️ Potential derived attribute warning
 
-Each field atomic → 1NF ✅
+You’ve correctly avoided storing total_price, since it can be derived from:
 
-Non-key fields depend on the whole primary key (booking_id) → 2NF ✅
+DATEDIFF(end_date, start_date) * pricepernight
 
-No field depends on another non-key field (e.g., total_price should be computed but not stored redundantly).
-✅ 3NF compliant.
 
-⚠️ Potential Issue:
+This avoids redundancy — excellent 3NF compliance.
 
-If you store both property_price and total_price here, it creates redundancy (price is derived from Property and duration).
-Fix: Keep only total_price or calculate it dynamically using joins.
+🟢 No redundancy present.
 
-4. PAYMENT Table
+Payments Table
+(payment_id, booking_id, amount, payment_date, payment_method)
 
-Proposed structure:
 
-Payment(
-  payment_id INT PRIMARY KEY,
-  booking_id INT,
-  amount DECIMAL(10,2),
-  method VARCHAR(50),
-  payment_date DATE,
-  status VARCHAR(50)
-)
+✅ Each payment is fully dependent on payment_id.
 
-✅ Review:
+amount is payment-specific (not necessarily equal to total booking cost).
 
-Each column atomic → 1NF ✅
+No repeating fields or derived data.
 
-Non-key attributes depend only on payment_id → 2NF ✅
+🟢 Passes 3NF.
 
-No transitive dependency (e.g., don’t include user_email or property_name here).
-✅ 3NF compliant.
+Reviews Table
+(review_id, property_id, user_id, rating, comment, created_at)
 
-5. POTENTIAL REDUNDANCIES (Summary Table)
-Table	Violation	Description	Normalization Fix
-User	None (possible location redundancy)	Repeated city/country values	Create Location table
-Property	3NF	Owner details depend on owner_id	Move to User table
-Booking	Derived data redundancy	Storing both property and total price	Calculate or remove redundant field
-Payment	None	All dependencies correct	Keep as-is
-✅ Conclusion
 
-After review:
+✅ Each field depends on review_id.
 
-User, Booking, and Payment are in 3NF.
+⚠️ Possible real-world constraint consideration (not a normalization violation):
 
-Property needed minor adjustment (removing owner info redundancy).
+A guest shouldn’t be able to review the same property multiple times — this is not a normalization issue, but you can enforce it with:
 
-Optionally, User location data can be normalized further.
+UNIQUE(property_id, user_id)
 
-Your schema now fully satisfies Third Normal Form (3NF) — ensuring minimal redundancy and strong data integrity.
-User(user_id, name, email, phone, role_id)
-Property(property_id, owner_id, name, price, location)
-...
-# 📘 Database Normalization Process (Up to 3NF)
 
-## 🎯 Objective
-To refine the database schema by removing redundancy and ensuring data integrity through normalization up to the **Third Normal Form (3NF)**.
+to prevent duplicates.
 
----
+🟢 3NF compliant.
 
-## 🧩 1. Understanding Normalization
-**Normalization** is the process of structuring a relational database to minimize data redundancy and improve data consistency.  
-Each *normal form* adds rules to achieve a cleaner, more efficient design.
+Messages Table
+(message_id, sender_id, recipient_id, message_body, sent_at)
 
----
 
-## 🧱 2. Normalization Steps
+✅ No derived data or transitive dependency.
 
-### 🥇 Step 1: First Normal Form (1NF)
-**Rule:**  
-- Each table cell must contain a single (atomic) value.  
-- Each record must be unique.
+🟢 3NF compliant.
 
-**Action Taken:**  
-- Split multi-valued attributes (e.g., multiple phone numbers → separate rows or table).  
-- Added **primary keys** to each table (`user_id`, `property_id`, `booking_id`, `payment_id`).
+✅ Summary of Findings
+Table	Normalization Status	Notes
+Users	✅ 3NF	No issues
+Properties	✅ 3NF	Optional: break down location
+Bookings	✅ 3NF	Avoided total_price redundancy
+Payments	✅ 3NF	No violations
+Reviews	✅ 3NF	Add UNIQUE(property_id, user_id) to enforce integrity
+Messages	✅ 3NF	Clean structure
+🧠 Conclusion
 
-**Example:**
-| user_id | full_name | phone_numbers |
-|----------|------------|---------------|
-| 1        | Jane Doe   | 0801, 0812    |
+Your schema is fully normalized to 3NF — all attributes depend directly on their respective primary keys, and there are no derived or transitive dependencies.
 
-➡ **After 1NF**
-| user_id | first_name | last_name | phone_number |
-|----------|-------------|------------|---------------|
-| 1        | Jane        | Doe        | 0801          |
-| 1        | Jane        | Doe        | 0812          |
+Only optional refinements:
 
-✅ **Result:** Each column now holds atomic values; duplicates removed.
+Add:
 
----
+ALTER TABLE Reviews ADD CONSTRAINT unique_user_property_review UNIQUE (property_id, user_id);
 
-### 🥈 Step 2: Second Normal Form (2NF)
-**Rule:**  
-- Must already satisfy **1NF**.  
-- All non-key attributes must depend on the *whole* primary key (no partial dependency).
 
-**Action Taken:**  
-- Identified composite keys and removed partial dependencies.  
-- Moved attributes that depended only on part of a composite key into separate tables.
+to enforce review uniqueness.
 
-**Example (Violation):**
-Here, `property_location` depends only on `property_id`, not the composite key.
-
-➡ **Fix:** Move `property_location` to the `Property` table.
-
-✅ **Result:** Each non-key attribute fully depends on the entire primary key.
-
----
-
-### 🥉 Step 3: Third Normal Form (3NF)
-**Rule:**  
-- Must already satisfy **2NF**.  
-- No transitive dependencies (non-key attributes cannot depend on other non-key attributes).
-
-**Action Taken:**  
-- Removed transitive dependencies such as `owner_email` depending on `owner_id`.  
-- Created a `User` (or `Owner`) table to hold those details.
-
-**Example (Violation):**
-Here, `owner_email` depends on `owner_id`, not directly on `property_id`.
-
-➡ **Fix:**  
-Move `owner_email` to the `User` table and link using a foreign key:
-
-✅ **Result:** All non-key attributes now depend *only* on the table’s primary key.
-
----
-
-## 🧮 3. Final 3NF Schema Overview
-
-| Entity   | Primary Key | Key Attributes | Notes |
-|-----------|--------------|----------------|--------|
-| **User** | user_id | first_name, last_name, email, phone | Each user uniquely identified |
-| **Property** | property_id | owner_id (FK), name, location, price, type | No redundant owner data |
-| **Booking** | booking_id | user_id (FK), property_id (FK), booking_date, check_in, check_out, total_price, status | Fully dependent on booking_id |
-| **Payment** | payment_id | booking_id (FK), amount, method, payment_date, status | Linked directly to booking |
-
----
-
-## ✅ 4. Benefits of 3NF
-- Eliminates redundant data storage  
-- Prevents update, insertion, and deletion anomalies  
-- Improves data consistency  
-- Simplifies maintenance and querying  
-
----
-
-## 🏁 5. Conclusion
-After applying normalization up to **Third Normal Form (3NF)**:
-- Each table stores a single, well-defined concept.  
-- All non-key attributes depend directly on the primary key.  
-- The schema is free of partial and transitive dependencies.  
-
-This ensures a **clean, efficient, and reliable** database design.
-
----
-
+Consider decomposing location into city, state, country if you expect advanced querying or analytics.
