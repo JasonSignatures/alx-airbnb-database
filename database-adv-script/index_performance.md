@@ -1,53 +1,51 @@
--- Database Indexing Strategy
--- Objective: Create indexes on high-usage columns (Foreign Keys, WHERE, and ORDER BY clauses)
--- to speed up the join operations defined in joins.sql and common filtering tasks.
--- Primary keys are typically indexed automatically, so we focus on FKs and common query targets.
+-- Objective: Create indexes to improve query performance.
 
--- -------------------------------------------------------------------
--- 1. Indexing on BOOKINGS Table
--- -------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Step 1: Identify High-Usage Columns & Create Indexes
+--
+-- We look at our previous queries and see we often join or filter on these columns:
+--   - `Bookings.user_id` (used to join with Users)
+--   - `Bookings.property_id` (used to join with Properties)
+--   - `Users.user_name` (might be used in a WHERE clause to find a user)
+-- These are excellent candidates for indexes.
+--------------------------------------------------------------------------------
 
--- Index on the Foreign Key (FK) column 'user_id'.
--- This significantly speeds up the INNER JOIN and FULL OUTER JOIN on the USERS table.
-CREATE INDEX idx_bookings_user_id ON BOOKINGS (user_id);
+-- Create an index on the user_id column in the Bookings table
+CREATE INDEX idx_bookings_user_id ON Bookings(user_id);
 
--- Index on 'booking_date'.
--- This column is extremely likely to be used in WHERE clauses (e.g., filter by date range)
--- and ORDER BY clauses (e.g., show the most recent bookings).
-CREATE INDEX idx_bookings_date ON BOOKINGS (booking_date);
+-- Create an index on the property_id column in the Bookings table
+CREATE INDEX idx_bookings_property_id ON Bookings(property_id);
 
--- -------------------------------------------------------------------
--- 2. Indexing on PROPERTIES Table
--- -------------------------------------------------------------------
+-- Create an index on the user_name column for faster searches by name
+CREATE INDEX idx_users_user_name ON Users(user_name);
 
--- Index on 'property_name'.
--- This column is explicitly used in the ORDER BY clause in the LEFT JOIN query.
--- Indexing this column will speed up sorting operations on the result set.
-CREATE INDEX idx_properties_name ON PROPERTIES (property_name);
 
--- -------------------------------------------------------------------
--- 3. Indexing on REVIEWS Table
--- -------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Step 2: Measure Performance Before and After
+--
+-- To see the effect, you would run the EXPLAIN command on a query
+-- *before* creating the index, and then again *after*.
+-- NOTE: The exact output depends on your specific SQL database (PostgreSQL, MySQL, etc.)
+--------------------------------------------------------------------------------
 
--- Index on the Foreign Key (FK) column 'property_id'.
--- This significantly speeds up the LEFT JOIN operation connecting properties to their reviews.
-CREATE INDEX idx_reviews_property_id ON REVIEWS (property_id);
+-- EXAMPLE SCENARIO:
 
--- -------------------------------------------------------------------
--- Performance Measurement Instructions
--- -------------------------------------------------------------------
+-- **BEFORE creating the index `idx_bookings_user_id`:**
+-- You run this command:
+EXPLAIN ANALYZE SELECT * FROM Bookings WHERE user_id = 123;
 
--- To measure the query performance before and after adding these indexes, you should
--- use the database's query analysis tool (e.g., EXPLAIN PLAN in Oracle/PostgreSQL,
--- EXPLAIN in MySQL) on the queries found in joins.sql.
+-- The output would likely show a "Sequential Scan" on the Bookings table,
+-- indicating it had to check every row.
+-- It might look something like this:
+-- "Seq Scan on bookings (cost=0.00..155.00 rows=5 width=24) (actual time=0.021..0.751 rows=5 loops=1)"
+-- The important part is "Seq Scan".
 
--- Example for measuring performance BEFORE/AFTER index creation (using PostgreSQL/MySQL syntax):
--- 1. Run the query BEFORE creating the indexes:
---    EXPLAIN ANALYZE SELECT ... FROM Properties P LEFT JOIN Reviews R ON P.property_id = R.property_id;
 
--- 2. Execute the CREATE INDEX commands in this file.
+-- **AFTER creating the index `idx_bookings_user_id`:**
+-- You run the exact same command:
+EXPLAIN ANALYZE SELECT * FROM Bookings WHERE user_id = 123;
 
--- 3. Run the query AFTER creating the indexes:
---    EXPLAIN ANALYZE SELECT ... FROM Properties P LEFT JOIN Reviews R ON P.property_id = R.property_id;
-
--- Compare the "cost" and "time" metrics to see the speed improvement.
+-- The new output should show an "Index Scan," which is much faster.
+-- It might look something like this:
+-- "Index Scan using idx_bookings_user_id on bookings (cost=0.15..8.17 rows=5 width=24) (actual time=0.024..0.026 rows=5 loops=1)"
+-- The important part is "Index Scan", and the cost/time values are much lower.
