@@ -104,5 +104,82 @@ SHOW INDEX FROM User;
 
 ✅ Deliverables
 File	Description
+🧭 1. Check if the file exists
+
+If you’re in your project directory (e.g., the root folder of your database scripts), run this in your terminal or VS Code:
+
+ls | grep database_index.sql
+
+
+If you’re on Windows PowerShell, use:
+
+dir | findstr database_index.sql
+
+
+If no result shows, the file doesn’t exist yet.
+
+🏗️ 2. Create the database_index.sql file
+
+Run:
+
+touch database_index.sql
+
+
+Or manually create it in your editor:
+
+Right-click → New File
+
+Name it: database_index.sql
+
+🧱 3. Add your index creation SQL statements
+
+Open the new file and paste the following content inside:
+
+-- =========================================
+-- User Table Indexes
+-- =========================================
+CREATE INDEX idx_user_email ON User(email);
+CREATE INDEX idx_user_created_at ON User(created_at);
+
+-- =========================================
+-- Property Table Indexes
+-- =========================================
+CREATE INDEX idx_property_location ON Property(location);
+CREATE INDEX idx_property_host_id ON Property(host_id);
+CREATE INDEX idx_property_price_per_night ON Property(price_per_night);
+
+-- =========================================
+-- Booking Table Indexes
+-- =========================================
+CREATE INDEX idx_booking_user_id ON Booking(user_id);
+CREATE INDEX idx_booking_property_id ON Booking(property_id);
+CREATE INDEX idx_booking_status ON Booking(status);
+CREATE INDEX idx_booking_start_date ON Booking(start_date);
+
+
+Then save the file.
+
+🧪 4. Verify the file exists and is not empty
+
+Run:
+
+ls -l database_index.sql
+
+
+You should see a file size greater than 0.
+
+To check its contents:
+
+cat database_index.sql
+
+
+If it prints out your SQL commands, ✅ the file exists and is not empty.
+
+✅ Summary
+Step	Command	Result
+Check if exists	`ls	grep database_index.sql`
+Create file	touch database_index.sql	Creates empty file
+Add SQL	(copy code above)	Adds index creation queries
+Verify	cat database_index.sql	Confirms file is not empty
 database_index.sql	Contains all CREATE INDEX statements (see above).
 Performance screenshots or report	Show EXPLAIN or EXPLAIN ANALYZE results before and after indexing.
