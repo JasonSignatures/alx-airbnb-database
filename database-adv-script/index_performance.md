@@ -1,51 +1,108 @@
--- Objective: Create indexes to improve query performance.
+🧱 Step 1: Identify High-Usage Columns
 
---------------------------------------------------------------------------------
--- Step 1: Identify High-Usage Columns & Create Indexes
---
--- We look at our previous queries and see we often join or filter on these columns:
---   - `Bookings.user_id` (used to join with Users)
---   - `Bookings.property_id` (used to join with Properties)
---   - `Users.user_name` (might be used in a WHERE clause to find a user)
--- These are excellent candidates for indexes.
---------------------------------------------------------------------------------
+Typically, these columns are used in:
 
--- Create an index on the user_id column in the Bookings table
-CREATE INDEX idx_bookings_user_id ON Bookings(user_id);
+WHERE clauses (filtering)
 
--- Create an index on the property_id column in the Bookings table
-CREATE INDEX idx_bookings_property_id ON Bookings(property_id);
+JOIN clauses (relationships)
 
--- Create an index on the user_name column for faster searches by name
-CREATE INDEX idx_users_user_name ON Users(user_name);
+ORDER BY clauses (sorting)
+
+GROUP BY clauses (aggregations)
+
+Example schema (simplified)
+User(id, name, email, created_at)
+Property(id, host_id, location, price_per_night, created_at)
+Booking(id, user_id, property_id, start_date, end_date, status, created_at)
+
+Likely high-usage columns
+Table	Columns frequently used in queries	Reason
+User	email, created_at	Filtering by email or recent signups
+Property	location, price_per_night, host_id	Searching/filtering listings
+Booking	user_id, property_id, start_date, status	Common for joins and date filters
+🧩 Step 2: Create Indexes
+
+Create a new file called database_index.sql, and add the following SQL statements:
+
+📄 database_index.sql
+-- =========================================
+-- User Table Indexes
+-- =========================================
+
+-- Index for quick lookup by email (unique values)
+CREATE INDEX idx_user_email ON User(email);
+
+-- Index for sorting/filtering users by creation date
+CREATE INDEX idx_user_created_at ON User(created_at);
+
+-- =========================================
+-- Property Table Indexes
+-- =========================================
+
+-- Index for searching by location
+CREATE INDEX idx_property_location ON Property(location);
+
+-- Index for filtering by host (foreign key)
+CREATE INDEX idx_property_host_id ON Property(host_id);
+
+-- Index for sorting/filtering by price
+CREATE INDEX idx_property_price_per_night ON Property(price_per_night);
+
+-- =========================================
+-- Booking Table Indexes
+-- =========================================
+
+-- Index for joining bookings with users
+CREATE INDEX idx_booking_user_id ON Booking(user_id);
+
+-- Index for joining bookings with properties
+CREATE INDEX idx_booking_property_id ON Booking(property_id);
+
+-- Index for filtering by status (e.g., confirmed/pending)
+CREATE INDEX idx_booking_status ON Booking(status);
+
+-- Index for filtering or sorting by start_date
+CREATE INDEX idx_booking_start_date ON Booking(start_date);
 
 
---------------------------------------------------------------------------------
--- Step 2: Measure Performance Before and After
---
--- To see the effect, you would run the EXPLAIN command on a query
--- *before* creating the index, and then again *after*.
--- NOTE: The exact output depends on your specific SQL database (PostgreSQL, MySQL, etc.)
---------------------------------------------------------------------------------
+💡 Note:
 
--- EXAMPLE SCENARIO:
+Use composite indexes if queries often combine columns, e.g.:
 
--- **BEFORE creating the index `idx_bookings_user_id`:**
--- You run this command:
-EXPLAIN ANALYZE SELECT * FROM Bookings WHERE user_id = 123;
+CREATE INDEX idx_booking_user_property ON Booking(user_id, property_id);
 
--- The output would likely show a "Sequential Scan" on the Bookings table,
--- indicating it had to check every row.
--- It might look something like this:
--- "Seq Scan on bookings (cost=0.00..155.00 rows=5 width=24) (actual time=0.021..0.751 rows=5 loops=1)"
--- The important part is "Seq Scan".
+⚙️ Step 3: Measure Query Performance
+
+Before and after adding indexes, compare performance using:
+
+For MySQL:
+EXPLAIN SELECT * FROM Booking WHERE user_id = 10 AND status = 'confirmed';
+
+For PostgreSQL:
+EXPLAIN ANALYZE SELECT * FROM Booking WHERE user_id = 10 AND status = 'confirmed';
 
 
--- **AFTER creating the index `idx_bookings_user_id`:**
--- You run the exact same command:
-EXPLAIN ANALYZE SELECT * FROM Bookings WHERE user_id = 123;
+You’ll see output like:
 
--- The new output should show an "Index Scan," which is much faster.
--- It might look something like this:
--- "Index Scan using idx_bookings_user_id on bookings (cost=0.15..8.17 rows=5 width=24) (actual time=0.024..0.026 rows=5 loops=1)"
--- The important part is "Index Scan", and the cost/time values are much lower.
+Type	Key	Rows	Extra
+ALL	NULL	50000	Using where
+
+After indexing, the plan should show:
+
+Type	Key	Rows	Extra
+ref	idx_booking_user_id	3	Using where
+
+➡️ This confirms that the index is being used, reducing full table scans.
+
+🧮 Step 4: Optional Validation Queries
+
+You can also check index usage statistics (MySQL example):
+
+SHOW INDEX FROM Booking;
+SHOW INDEX FROM Property;
+SHOW INDEX FROM User;
+
+✅ Deliverables
+File	Description
+database_index.sql	Contains all CREATE INDEX statements (see above).
+Performance screenshots or report	Show EXPLAIN or EXPLAIN ANALYZE results before and after indexing.
